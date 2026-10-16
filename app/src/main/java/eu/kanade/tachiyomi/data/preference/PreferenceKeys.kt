@@ -18,6 +18,8 @@ object PreferenceKeys {
 
     const val enableTransitions = "pref_enable_transitions_key"
 
+    const val pageCurl = "pref_page_curl"
+
     const val pagerCutoutBehavior = "pager_cutout_behavior"
 
     const val doubleTapAnimationSpeed = "pref_double_tap_anim_speed"

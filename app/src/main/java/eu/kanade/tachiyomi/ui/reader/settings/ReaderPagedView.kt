@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.ui.reader.settings
 import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Build
 import android.util.AttributeSet
 import androidx.core.view.isVisible
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
@@ -34,6 +35,7 @@ class ReaderPagedView @JvmOverloads constructor(context: Context, attrs: Attribu
             zoomStart.bindToPreference(preferences.zoomStart(), 1)
             cropBorders.bindToPreference(preferences.cropBorders())
             pageTransitions.bindToPreference(preferences.pageTransitions())
+            pageCurl.bindToPreference(preferences.pageCurl())
             pagerNav.bindToPreference(preferences.navigationModePager())
             pagerInvert.bindToPreference(preferences.pagerNavInverted())
             extendPastCutout.bindToPreference(readerPreferences.pagerCutoutBehavior())
@@ -84,6 +86,7 @@ class ReaderPagedView @JvmOverloads constructor(context: Context, attrs: Attribu
             binding.zoomStart,
             binding.cropBorders,
             binding.pageTransitions,
+            binding.pageCurl,
             binding.pagerNav,
             binding.pagerInvert,
             binding.pageLayout,
@@ -125,5 +128,7 @@ class ReaderPagedView @JvmOverloads constructor(context: Context, attrs: Attribu
             )
         }
         binding.invertDoublePages.isVisible = show && preferences.pageLayout().get() != PageLayout.SINGLE_PAGE.value
+        // The curl needs the shader API introduced in Android 13.
+        binding.pageCurl.isVisible = show && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
     }
 }

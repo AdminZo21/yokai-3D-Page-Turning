@@ -1,10 +1,13 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.pager
 
 import android.content.Context
+import android.graphics.Canvas
 import android.os.Parcelable
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.animation.Interpolator
+import android.widget.Scroller
 import androidx.viewpager.widget.DirectionalViewPager
 import eu.kanade.tachiyomi.ui.reader.viewer.GestureDetectorWithLongTap
 
@@ -27,6 +30,12 @@ open class Pager(
      * Long tap listener function to execute when a long tap is detected.
      */
     var longTapListener: ((MotionEvent) -> Boolean)? = null
+
+    /**
+     * Optional drawing done on top of the pages, in the pager's own (screen) coordinates. Used by
+     * the page curl animation.
+     */
+    var overlayDrawer: ((Canvas) -> Unit)? = null
 
     var isRestoring = false
 
@@ -114,5 +123,38 @@ open class Pager(
      */
     fun setGestureDetectorEnabled(enabled: Boolean) {
         isGestureDetectorEnabled = enabled
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        val drawer = overlayDrawer ?: return
+        // Children are drawn in content coordinates, so move back to the visible area first.
+        val checkpoint = canvas.save()
+        canvas.translate(scrollX.toFloat(), scrollY.toFloat())
+        drawer(canvas)
+        canvas.restoreToCount(checkpoint)
+    }
+
+    /**
+     * Makes page settle animations [factor] times as long as the default (1 restores it). Curling a
+     * page looks wrong when it completes as fast as a plain slide.
+     */
+    fun setSettleDurationFactor(factor: Float) {
+        try {
+            // Found by type rather than name so it still works when the library is minified.
+            val field = DirectionalViewPager::class.java.declaredFields
+                .firstOrNull { it.type == Scroller::class.java } ?: return
+            field.isAccessible = true
+            field.set(this, ScaledScroller(context, factor))
+        } catch (_: Exception) {
+            // Keep the default speed.
+        }
+    }
+
+    private class ScaledScroller(context: Context, private val factor: Float) :
+        Scroller(context, Interpolator { t -> (t - 1f).let { it * it * it * it * it + 1f } }) {
+        override fun startScroll(startX: Int, startY: Int, dx: Int, dy: Int, duration: Int) {
+            super.startScroll(startX, startY, dx, dy, (duration * factor).toInt())
+        }
     }
 }

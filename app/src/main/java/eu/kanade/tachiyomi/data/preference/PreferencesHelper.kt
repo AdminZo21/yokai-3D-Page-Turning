@@ -77,6 +77,8 @@ class PreferencesHelper(val context: Context, val preferenceStore: PreferenceSto
 
     fun pageTransitions() = preferenceStore.getBoolean(Keys.enableTransitions, true)
 
+    fun pageCurl() = preferenceStore.getBoolean(Keys.pageCurl, false)
+
     fun doubleTapAnimSpeed() = preferenceStore.getInt(Keys.doubleTapAnimationSpeed, 500)
 
     fun showPageNumber() = preferenceStore.getBoolean(Keys.showPageNumber, true)

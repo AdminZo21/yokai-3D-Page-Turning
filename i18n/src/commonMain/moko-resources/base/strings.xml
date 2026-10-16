@@ -410,6 +410,7 @@
     <!-- Reader settings -->
     <string name="fullscreen">Fullscreen</string>
     <string name="animate_page_transitions">Animate page transitions</string>
+    <string name="page_curl_animation">Page curl animation (Android 13+)</string>
     <string name="enable_zoom_out">Enable zoom out</string>
     <string name="double_tap_anim_speed">Double tap animation speed</string>
     <string name="show_page_number">Show page number</string>

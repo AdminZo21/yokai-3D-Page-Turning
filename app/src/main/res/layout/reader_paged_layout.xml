@@ -112,6 +112,14 @@
             android:text="@string/animate_page_transitions"
             android:textColor="?attr/colorOnBackground" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/page_curl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/page_curl_animation"
+            android:textColor="?attr/colorOnBackground" />
+
         <!-- Webtoon Prefs -->
         <eu.kanade.tachiyomi.widget.MaterialSpinnerView
             android:id="@+id/webtoon_nav"

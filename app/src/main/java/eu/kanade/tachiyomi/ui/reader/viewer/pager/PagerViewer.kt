@@ -1,11 +1,15 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.pager
 
+import android.graphics.Color
 import android.graphics.PointF
+import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams
+import androidx.annotation.RequiresApi
 import androidx.core.view.children
 import androidx.core.view.isVisible
 import androidx.viewpager.widget.ViewPager
@@ -80,6 +84,11 @@ abstract class PagerViewer(val activity: ReaderActivity) : BaseViewer {
     var hasMoved = false
 
     /**
+     * The curl driving the page changes while the page curl animation is enabled, if any.
+     */
+    private var pageCurlTransformer: PageCurlTransformer? = null
+
+    /**
      * Variable used to hold the forward pos for reader activity shared transitions
      * Without this var landscapezoom wont work with activity transitions
      * */
@@ -145,6 +154,9 @@ abstract class PagerViewer(val activity: ReaderActivity) : BaseViewer {
             refreshAdapter()
             activity.isScrollingThroughPagesOrChapters = false
         }
+
+        config.pageCurlChangedListener = { updatePageCurl() }
+        updatePageCurl()
 
         config.reloadChapterListener = {
             activity.reloadChapters(it)
@@ -412,7 +424,7 @@ abstract class PagerViewer(val activity: ReaderActivity) : BaseViewer {
             if (holder != null && config.navigateToPan && holder.canPanRight()) {
                 holder.panRight()
             } else {
-                pager.setCurrentItem(pager.currentItem + 1, config.usePageTransitions)
+                pager.setCurrentItem(pager.currentItem + 1, animatePageChanges)
             }
         }
     }
@@ -427,7 +439,7 @@ abstract class PagerViewer(val activity: ReaderActivity) : BaseViewer {
             if (holder != null && config.navigateToPan && holder.canPanLeft()) {
                 holder.panLeft()
             } else {
-                pager.setCurrentItem(pager.currentItem - 1, config.usePageTransitions)
+                pager.setCurrentItem(pager.currentItem - 1, animatePageChanges)
             }
         }
     }
@@ -444,6 +456,62 @@ abstract class PagerViewer(val activity: ReaderActivity) : BaseViewer {
      */
     protected open fun moveDown() {
         moveToNext()
+    }
+
+    /**
+     * Whether page changes done by taps and keys are animated. The page curl always animates.
+     */
+    private val animatePageChanges: Boolean
+        get() = config.usePageTransitions || pageCurlTransformer != null
+
+    /**
+     * Turns the page curl animation on or off to match the preference. Only horizontal pagers get
+     * it, and only on Android 13+ where the shader it needs exists; everything else keeps the
+     * regular slide.
+     */
+    private fun updatePageCurl() {
+        if (this is VerticalPagerViewer) return
+        val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        if (supported && config.pageCurl && pageCurlTransformer == null) {
+            enablePageCurl()
+        } else if (supported && !config.pageCurl && pageCurlTransformer != null) {
+            disablePageCurl()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun enablePageCurl() {
+        // A device whose shader compiler rejects the curl shader keeps the regular slide.
+        val renderer = try {
+            PageCurlRenderer()
+        } catch (e: Exception) {
+            Logger.e(e) { "Page curl shader is unavailable" }
+            return
+        }
+        val transformer = PageCurlTransformer(
+            renderer = renderer,
+            // R2L reverses the items instead of the layout, so the curl starts from the left edge.
+            mirror = this is R2LPagerViewer,
+            backgroundColor = {
+                (activity.binding.viewerContainer.background as? ColorDrawable)?.color ?: Color.BLACK
+            },
+            onChanged = { pager.invalidate() },
+        )
+        pager.setPageTransformer(false, transformer)
+        pager.overlayDrawer = { canvas -> renderer.draw(canvas, pager.width, pager.height) }
+        pager.setSettleDurationFactor(PAGE_CURL_SETTLE_FACTOR)
+        pageCurlTransformer = transformer
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun disablePageCurl() {
+        pageCurlTransformer?.release()
+        pager.setPageTransformer(false, null)
+        pager.overlayDrawer = null
+        pager.setSettleDurationFactor(1f)
+        pager.children.forEach { PageCurlTransformer.restore(it) }
+        pageCurlTransformer = null
+        pager.invalidate()
     }
 
     /**
@@ -521,3 +589,6 @@ abstract class PagerViewer(val activity: ReaderActivity) : BaseViewer {
         }
     }
 }
+
+/** How much longer page changes take while the page curl is on, so the curl is visible. */
+private const val PAGE_CURL_SETTLE_FACTOR = 2f

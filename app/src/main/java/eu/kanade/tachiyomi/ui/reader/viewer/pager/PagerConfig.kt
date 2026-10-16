@@ -33,6 +33,11 @@ class PagerConfig(
     var usePageTransitions = false
         private set
 
+    var pageCurl = false
+        private set
+
+    var pageCurlChangedListener: (() -> Unit)? = null
+
     var imageScaleType = 1
         private set
 
@@ -78,6 +83,8 @@ class PagerConfig(
 
     init {
         preferences.pageTransitions().register({ usePageTransitions = it })
+
+        preferences.pageCurl().register({ pageCurl = it }, { pageCurlChangedListener?.invoke() })
 
         preferences.fullscreen().register({ isFullscreen = it })
 

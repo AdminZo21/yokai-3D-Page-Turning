@@ -1,0 +1,51 @@
+name: Build APK (fork)
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '**'
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  build:
+    name: Build installable APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Android SDK
+        run: |
+          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0"
+
+      - name: Setup Gradle
+        uses: null2264/actions/gradle-java-setup@240857a3fa6e2667311da86417c637d4f59e8d75
+        with:
+          java: 21
+          distro: temurin
+
+      - name: Copy CI gradle.properties
+        run: |
+          mkdir -p ~/.gradle
+          cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
+
+      # The nightly build type is signed with the debug key, so the APK can be installed directly,
+      # and it has its own package name, so it installs next to the official Yokai.
+      - name: Build the app
+        run: ./gradlew assembleStandardNightly
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: yokai-arm64-v8a-${{ github.sha }}
+          path: app/build/outputs/apk/standard/nightly/*arm64-v8a*.apk
+          if-no-files-found: error
